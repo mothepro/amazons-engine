@@ -1,6 +1,10 @@
 import { Spot } from './Board.js'
 import { Color } from './Piece.js'
 
+export function isColor(spot: Spot) {
+  return spot == Spot.WHITE || spot == Spot.BLACK
+}
+
 export function spotToColor(spot: Spot) {
   switch (spot) {
     case Spot.BLACK:
