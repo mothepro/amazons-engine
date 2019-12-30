@@ -34,36 +34,57 @@ export default class {
   }
 
   /** Gets all valid positions to move to from a given starting position. */
-  validMoves([x, y]: Position) {
+  validMoves([startX, startY]: Position) {
     const ret = new Set<Position>()
 
     // up
-    for (let newY = y - 1; newY >= 0; newY--) {
-      if (this.board[newY][x] != Spot.EMPTY)
-        break
-      ret.add([x, newY])
-    }
+    for (let y = startY - 1;
+      y >= 0 && this.board[y][startX] == Spot.EMPTY;
+      y--)
+      ret.add([startX, y])
+
 
     // down
-    for (let newY = y + 1; newY < this.board.length; newY++) {
-      if (this.board[newY][x] != Spot.EMPTY)
-        break
-      ret.add([x, newY])
-    }
+    for (let y = startY + 1;
+      y < this.board.length && this.board[y][startX] == Spot.EMPTY;
+      y++)
+      ret.add([startX, y])
 
     // left
-    for (let newX = x - 1; newX >= 0; newX--) {
-      if (this.board[y][newX] != Spot.EMPTY)
-        break
-      ret.add([newX, y])
-    }
+    for (let x = startX - 1;
+      x >= 0 && this.board[startY][x] == Spot.EMPTY;
+      x--)
+      ret.add([x, startY])
 
     // right
-    for (let newX = x + 1; newX < this.board[y].length; newX++) {
-      if (this.board[y][newX] != Spot.EMPTY)
-        break
-      ret.add([newX, y])
-    }
+    for (let x = startX + 1;
+      x < this.board[startY].length && this.board[startY][x] == Spot.EMPTY;
+      x++)
+      ret.add([x, startY])
+
+    // up & left
+    for (let y = startY - 1, x = startX - 1;
+      y >= 0 && x >= 0 && this.board[y][x] == Spot.EMPTY;
+      y-- , x--)
+      ret.add([x, y])
+
+    // down & left
+    for (let y = startY + 1, x = startX - 1;
+      y < this.board.length && x >= 0 && this.board[y][x] == Spot.EMPTY;
+      y++ , x--)
+      ret.add([x, y])
+
+    // up & right
+    for (let y = startY - 1, x = startX + 1;
+      y >= 0 && x < this.board[y].length && this.board[y][x] == Spot.EMPTY;
+      y-- , x++)
+      ret.add([x, y])
+
+    // down & right
+    for (let y = startY + 1, x = startX + 1;
+      y < this.board.length && x < this.board[y].length && this.board[y][x] == Spot.EMPTY;
+      y++ , x++)
+      ret.add([x, y])
 
     return ret
   }
