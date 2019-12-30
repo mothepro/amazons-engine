@@ -6,6 +6,8 @@ export const enum Color {
 }
 
 export default class {
+  validMoves!: Set<Position>
+
   constructor(
     readonly color: Color,
     public position: Position,

@@ -1,8 +1,40 @@
+import { SafeEmitter, SafeSingleEmitter } from 'fancy-emitter'
 import Board, { Spot, Position } from './Board.js'
 import Piece, { Color } from './Piece.js'
 import { spotToColor, colorToSpot, isColor } from './helpers.js'
+import validMoves from './validMoves.js'
 
 export default class {
+
+  /** @readonly current player's color. */
+  current!: Color
+
+  /** @readonly the other player's color. */
+  get waiting() {
+    return this.current == Color.BLACK
+      ? Color.WHITE
+      : Color.BLACK
+  }
+
+  /** Game is over and winner has been set. */
+  readonly winner = new SafeSingleEmitter<Color>()
+
+  /** The board has been changed. */
+  readonly change = new SafeEmitter
+
+  /** Activated when the players turn changes */
+  readonly turn = new SafeEmitter<Color>(
+    // Bind color value to this emitter
+    color => this.current = color,
+
+    // Update valid moves for each piece
+    color => this.pieces.get(color)!
+      .forEach(piece => piece.validMoves = validMoves(this.board, piece.position)),
+    
+    // End game and activate winner if no valid moves are left
+    color => 0 == Math.max(...[...this.pieces.get(color)!].map(piece => piece.validMoves!.size))
+      && this.winner.activate(this.waiting)
+  )
 
   private readonly pieces = new Map<Color, Set<Piece>>()
     .set(Color.BLACK, new Set)
@@ -16,6 +48,7 @@ export default class {
           this.pieces
             .get(spotToColor(spot))!
             .add(new Piece(spotToColor(spot), [x, y]))
+    this.turn.activate(Color.BLACK)
   }
 
   /**
@@ -26,66 +59,13 @@ export default class {
     this.board[piece.position[1]][piece.position[0]] = Spot.EMPTY
     piece.position = [x, y]
     this.board[y][x] = colorToSpot(piece.color)
+    this.change.activate()
   }
-
-  /** Destroys a position on the board. */
+  
+  /** Destroys a position on the board and flips the players turn. */
   destroy([x, y]: Position) {
     this.board[y][x] = Spot.DESTROYED
-  }
-
-  /** Gets all valid positions to move to from a given starting position. */
-  validMoves([startX, startY]: Position) {
-    const ret = new Set<Position>()
-
-    // up
-    for (let y = startY - 1;
-      y >= 0 && this.board[y][startX] == Spot.EMPTY;
-      y--)
-      ret.add([startX, y])
-
-
-    // down
-    for (let y = startY + 1;
-      y < this.board.length && this.board[y][startX] == Spot.EMPTY;
-      y++)
-      ret.add([startX, y])
-
-    // left
-    for (let x = startX - 1;
-      x >= 0 && this.board[startY][x] == Spot.EMPTY;
-      x--)
-      ret.add([x, startY])
-
-    // right
-    for (let x = startX + 1;
-      x < this.board[startY].length && this.board[startY][x] == Spot.EMPTY;
-      x++)
-      ret.add([x, startY])
-
-    // up & left
-    for (let y = startY - 1, x = startX - 1;
-      y >= 0 && x >= 0 && this.board[y][x] == Spot.EMPTY;
-      y-- , x--)
-      ret.add([x, y])
-
-    // down & left
-    for (let y = startY + 1, x = startX - 1;
-      y < this.board.length && x >= 0 && this.board[y][x] == Spot.EMPTY;
-      y++ , x--)
-      ret.add([x, y])
-
-    // up & right
-    for (let y = startY - 1, x = startX + 1;
-      y >= 0 && x < this.board[y].length && this.board[y][x] == Spot.EMPTY;
-      y-- , x++)
-      ret.add([x, y])
-
-    // down & right
-    for (let y = startY + 1, x = startX + 1;
-      y < this.board.length && x < this.board[y].length && this.board[y][x] == Spot.EMPTY;
-      y++ , x++)
-      ret.add([x, y])
-
-    return ret
+    this.change.activate()
+    this.turn.activate(this.waiting)
   }
 }
