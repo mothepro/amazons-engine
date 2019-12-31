@@ -1,8 +1,12 @@
 import { SafeEmitter, SafeSingleEmitter } from 'fancy-emitter'
-import Board, { Spot, Position } from './Board.js'
-import Piece, { Color } from './Piece.js'
-import { spotToColor, colorToSpot, isColor } from './helpers.js'
+import Board, { Spot, Position, Color, isColor } from './Board.js'
 import validMoves from './validMoves.js'
+
+export interface Piece {
+  color: Color,
+  position: Position,
+  moves: Set<Position>,
+}
 
 export default class {
 
@@ -10,70 +14,76 @@ export default class {
   current!: Color
 
   /** @readonly the other player's color. */
-  get waiting() {
-    return this.current == Color.BLACK
-      ? Color.WHITE
-      : Color.BLACK
+  get waiting(): Color {
+    return this.current == Spot.BLACK
+      ? Spot.WHITE
+      : Spot.BLACK
   }
 
   /** Game is over and winner has been set. */
   readonly winner = new SafeSingleEmitter<Color>()
 
   /** The board has been changed. */
-  readonly boardChanged = new SafeEmitter
+  readonly boardChanged = new SafeEmitter(this.resetValidMoves, this.checkPlayable)
 
   /** Activated when the players turn changes */
   readonly turnStarted = new SafeEmitter<Color>(
     // Bind color value to this emitter
     color => this.current = color,
-
-    // Update valid moves for each piece
-    color => this.pieces.get(color)!
-      .forEach(piece => piece.validMoves = validMoves(this.board, piece.position)),
-
-    // End game and activate with the other player if no valid moves are left
-    color => 0 == Math.max(...[...this.pieces.get(color)!].map(piece => piece.validMoves!.size))
-      && this.winner.activate(this.waiting),
-
     // Bind all changes to this to the board changing
     this.boardChanged.activate,
   )
 
   /** Activated when the moved piece needs to destory the board a bit  */
   readonly pieceMoved = new SafeEmitter<Set<Position>>(
-
     // Bind all changes to this to the board changing
     this.boardChanged.activate,
   )
 
-  private readonly pieces = new Map<Color, Set<Piece>>()
-    .set(Color.BLACK, new Set)
-    .set(Color.WHITE, new Set)
+  /** All piece's color & valid moves, keyed by the piece's position stringified. */
+  private readonly pieces = new Map<string, Piece>()
 
   constructor(readonly board = Board) {
-    // Add pieces to board
-    for (const [y, row] of board.entries())
-      for (const [x, spot] of row.entries())
-        if (isColor(spot))
-          this.pieces
-            .get(spotToColor(spot))!
-            .add(new Piece(spotToColor(spot), [x, y]))
+    this.resetValidMoves()
   }
 
   /**
    * Moves a piece to a new position on the board without checking.
    * Clears the spot on the board where the piece was and updates the piece and the board.
    */
-  move(piece: Piece, [x, y]: Position) {
-    this.board[piece.position[1]][piece.position[0]] = Spot.EMPTY
-    this.board[y][x] = colorToSpot(piece.color)
-    piece.position = [x, y]
-    this.pieceMoved.activate(validMoves(this.board, piece.position))
+  move([fromX, fromY]: Position, [toX, toY]: Position) {
+    const previous = this.board[fromY][fromX]
+    this.board[fromY][fromX] = Spot.EMPTY
+    this.board[toY][toX] = previous
+    this.pieceMoved.activate(validMoves(this.board, [toX, toY]))
   }
 
   /** Destroys a position on the board and flips the players turn. */
   destroy([x, y]: Position) {
     this.board[y][x] = Spot.DESTROYED
     this.turnStarted.activate(this.waiting)
+  }
+
+  private resetValidMoves() {
+    this.pieces.clear()
+    for (const [y, row] of this.board.entries())
+      for (const [x, spot] of row.entries())
+        if (isColor(spot))
+          this.pieces.set(`${x},${y}`, {
+            color: spot,
+            position: [x, y],
+            moves: validMoves(this.board, [x, y]),
+          })
+  }
+
+  /** Activates the winner emitter if no plays are possible. */
+  private checkPlayable() {
+    const currentPiecesMoveCount = [...this.pieces]
+      .filter(([_, { color }]) => this.current == color)
+      .map(([_, { moves }]) => moves.size)
+    // End game and activate with the other player if no valid moves are left
+    if (0 == Math.max(...currentPiecesMoveCount))
+      this.winner.activate(this.waiting)
+    return this.winner.triggered
   }
 }
