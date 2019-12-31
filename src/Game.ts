@@ -24,7 +24,9 @@ export default class {
   readonly winner = new SafeSingleEmitter<Color>()
 
   /** The board has been changed. */
-  readonly boardChanged = new SafeEmitter(this.resetValidMoves, this.checkPlayable)
+  readonly boardChanged = new SafeEmitter(
+    () => this.resetValidMoves(),
+    () => this.checkPlayable())
 
   /** Activated when the players turn changes */
   readonly turnStarted = new SafeEmitter<Color>(
@@ -41,11 +43,9 @@ export default class {
   )
 
   /** All piece's color & valid moves, keyed by the piece's position stringified. */
-  private readonly pieces = new Map<string, Piece>()
+  readonly pieces = new Map<string, Piece>()
 
-  constructor(readonly board = Board) {
-    this.resetValidMoves()
-  }
+  constructor(readonly board = Board) { }
 
   /**
    * Moves a piece to a new position on the board without checking.
@@ -66,6 +66,7 @@ export default class {
 
   private resetValidMoves() {
     this.pieces.clear()
+
     for (const [y, row] of this.board.entries())
       for (const [x, spot] of row.entries())
         if (isColor(spot))
@@ -81,9 +82,11 @@ export default class {
     const currentPiecesMoveCount = [...this.pieces]
       .filter(([_, { color }]) => this.current == color)
       .map(([_, { moves }]) => moves.size)
+    
     // End game and activate with the other player if no valid moves are left
     if (0 == Math.max(...currentPiecesMoveCount))
       this.winner.activate(this.waiting)
+    
     return this.winner.triggered
   }
 }
