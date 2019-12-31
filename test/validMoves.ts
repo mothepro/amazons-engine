@@ -1,9 +1,9 @@
 import 'should'
 import validMoves from '../src/validMoves'
-import Board from '../src/Board'
+import simpleBoard from './simpleBoard'
 
 it('should find all valid moves from corner of board', () => {
-  [...validMoves(Board, [0, 0])].should.eql([
+  [...validMoves(simpleBoard, [0, 0])].should.eql([
     [0, 1],
     [1, 0],
     [1, 1],
