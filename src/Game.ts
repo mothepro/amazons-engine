@@ -48,7 +48,6 @@ export default class {
           this.pieces
             .get(spotToColor(spot))!
             .add(new Piece(spotToColor(spot), [x, y]))
-    this.turn.activate(Color.BLACK)
   }
 
   /**
