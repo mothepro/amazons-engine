@@ -20,27 +20,37 @@ export default class {
   readonly winner = new SafeSingleEmitter<Color>()
 
   /** The board has been changed. */
-  readonly change = new SafeEmitter
+  readonly boardChanged = new SafeEmitter
 
   /** Activated when the players turn changes */
-  readonly turn = new SafeEmitter<Color>(
+  readonly turnStarted = new SafeEmitter<Color>(
     // Bind color value to this emitter
     color => this.current = color,
 
     // Update valid moves for each piece
     color => this.pieces.get(color)!
       .forEach(piece => piece.validMoves = validMoves(this.board, piece.position)),
-    
-    // End game and activate winner if no valid moves are left
+
+    // End game and activate with the other player if no valid moves are left
     color => 0 == Math.max(...[...this.pieces.get(color)!].map(piece => piece.validMoves!.size))
-      && this.winner.activate(this.waiting)
+      && this.winner.activate(this.waiting),
+
+    // Bind all changes to this to the board changing
+    this.boardChanged.activate,
+  )
+
+  /** Activated when the moved piece needs to destory the board a bit  */
+  readonly pieceMoved = new SafeEmitter<Set<Position>>(
+
+    // Bind all changes to this to the board changing
+    this.boardChanged.activate,
   )
 
   private readonly pieces = new Map<Color, Set<Piece>>()
     .set(Color.BLACK, new Set)
     .set(Color.WHITE, new Set)
 
-  constructor(public board = Board) {
+  constructor(readonly board = Board) {
     // Add pieces to board
     for (const [y, row] of board.entries())
       for (const [x, spot] of row.entries())
@@ -56,15 +66,14 @@ export default class {
    */
   move(piece: Piece, [x, y]: Position) {
     this.board[piece.position[1]][piece.position[0]] = Spot.EMPTY
-    piece.position = [x, y]
     this.board[y][x] = colorToSpot(piece.color)
-    this.change.activate()
+    piece.position = [x, y]
+    this.pieceMoved.activate(validMoves(this.board, piece.position))
   }
-  
+
   /** Destroys a position on the board and flips the players turn. */
   destroy([x, y]: Position) {
     this.board[y][x] = Spot.DESTROYED
-    this.change.activate()
-    this.turn.activate(this.waiting)
+    this.turnStarted.activate(this.waiting)
   }
 }
