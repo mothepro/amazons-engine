@@ -37,7 +37,7 @@ export default class {
   )
 
   /** Activated when the moved piece needs to destory the board a bit  */
-  readonly pieceMoved = new SafeEmitter<Set<Position>>(
+  readonly pieceMoved = new SafeEmitter<Position>(
     // Bind all changes to this to the board changing
     this.boardChanged.activate,
   )
@@ -55,7 +55,7 @@ export default class {
     const previous = this.board[fromY][fromX]
     this.board[fromY][fromX] = Spot.EMPTY
     this.board[toY][toX] = previous
-    this.pieceMoved.activate(validMoves(this.board, [toX, toY]))
+    this.pieceMoved.activate([toX, toY])
   }
 
   /** Destroys a position on the board and flips the players turn. */
@@ -70,7 +70,7 @@ export default class {
     for (const [y, row] of this.board.entries())
       for (const [x, spot] of row.entries())
         if (isColor(spot))
-          this.pieces.set(`${x},${y}`, {
+          this.pieces.set([x, y].toString(), {
             color: spot,
             position: [x, y],
             moves: validMoves(this.board, [x, y]),
@@ -82,11 +82,11 @@ export default class {
     const currentPiecesMoveCount = [...this.pieces]
       .filter(([_, { color }]) => this.current == color)
       .map(([_, { moves }]) => moves.size)
-    
+
     // End game and activate with the other player if no valid moves are left
     if (0 == Math.max(...currentPiecesMoveCount))
       this.winner.activate(this.waiting)
-    
+
     return this.winner.triggered
   }
 }
