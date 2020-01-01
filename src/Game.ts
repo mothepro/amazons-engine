@@ -18,22 +18,28 @@ export default class {
   readonly winner = new SafeSingleEmitter<Color>()
 
   /** The board has been changed. */
-  readonly boardChanged = new SafeEmitter(
-    () => this.resetValidMoves(),
-    () => this.checkPlayable())
+  readonly boardChanged = new SafeEmitter(() => this.resetValidMoves())
 
   /** Activated when the players turn changes */
-  readonly turnStarted = new SafeEmitter<Color>(
+  readonly turn = new SafeEmitter<Color>(
     // Bind color value to this emitter
     color => this.current = color,
+    // End the game if there aren't any moves left
+    () => this.checkPlayable()
+  )
+
+  /** Activated when a piece has moved. */
+  readonly moved = new SafeEmitter<Position>(
     // Bind all changes to this to the board changing
     this.boardChanged.activate,
   )
 
-  /** Activated when the moved piece needs to destory the board a bit  */
-  readonly pieceMoved = new SafeEmitter<Position>(
+  /** Activated when a spot on the board is destroyed. */
+  readonly destroyed = new SafeEmitter<Position>(
     // Bind all changes to this to the board changing
     this.boardChanged.activate,
+    // Next turn
+    () => this.turn.activate(this.waiting)
   )
 
   /** 
@@ -46,11 +52,13 @@ export default class {
     moves: Set<Position>,
   }>()
 
-  constructor(readonly board = Board) { }
+  constructor(readonly board = Board) { 
+    this.resetValidMoves()
+  }
 
   /** Starts the game with `color`'s turn first. */
   start(color: Color = Spot.BLACK) {
-    this.turnStarted.activate(color)
+    this.turn.activate(color)
   }
 
   /**
@@ -61,13 +69,13 @@ export default class {
     const previous = this.board[fromY][fromX]
     this.board[fromY][fromX] = Spot.EMPTY
     this.board[toY][toX] = previous
-    this.pieceMoved.activate([toX, toY])
+    this.moved.activate([toX, toY])
   }
 
   /** Destroys a position on the board and flips the players turn. */
   destroy([x, y]: Position) {
     this.board[y][x] = Spot.DESTROYED
-    this.turnStarted.activate(this.waiting)
+    this.destroyed.activate([x, y])
   }
 
   private resetValidMoves() {

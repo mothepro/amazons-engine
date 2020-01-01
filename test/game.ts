@@ -1,6 +1,6 @@
 import 'should'
 import Game from '../src/Game'
-import Board, { Spot } from '../src/Board'
+import Board from '../src/Board'
 
 let game: Game
 
@@ -13,8 +13,8 @@ describe('Game', () => {
   })
 
   it('move piece', async () => {
-    game.turnStarted.activate(Spot.BLACK)
-    await game.boardChanged.next
+    game.start()
+    await game.turn.next
 
     const [firstPiece] = game.pieces.values(),
       [firstMove] = firstPiece.moves.values()
