@@ -17,28 +17,54 @@ export default class {
   /** Game is over and winner has been set. */
   readonly winner = new SafeSingleEmitter<Color>()
 
-  /** The board has been changed. */
-  readonly boardChanged = new SafeEmitter(() => this.resetValidMoves())
+  /**
+   * The board has been changed.
+   * The pieces valid moves need to re calculated. 
+   */
+  readonly boardChanged = new SafeEmitter(() => {
+    this.pieces.clear()
+
+    for (const [y, row] of this.board.entries())
+      for (const [x, spot] of row.entries())
+        if (isColor(spot))
+          this.pieces.set([x, y].toString(), {
+            color: spot,
+            position: [x, y],
+            moves: validMoves(this.board, [x, y]),
+          })
+  })
 
   /** Activated when the players turn changes */
   readonly turn = new SafeEmitter<Color>(
-    // Bind color value to this emitter
+    /** Bind color value to this emitter */
     color => this.current = color,
-    // End the game if there aren't any moves left
-    () => this.checkPlayable()
+    /** End the game if there aren't any moves left for this player. */
+    () => {
+      const currentPiecesMoveCount = [...this.pieces]
+        .filter(([_, { color }]) => this.current == color)
+        .map(([_, { moves }]) => moves.size)
+
+      // End game and activate with the other player if no valid moves are left
+      if (0 == Math.max(...currentPiecesMoveCount))
+        this.winner.activate(this.waiting)
+
+      return this.winner.triggered
+    }
   )
 
   /** Activated when a piece has moved. */
   readonly moved = new SafeEmitter<Position>(
-    // Bind all changes to this to the board changing
+    /** Bind all changes to this to the board changing */
     this.boardChanged.activate,
   )
 
   /** Activated when a spot on the board is destroyed. */
   readonly destroyed = new SafeEmitter<Position>(
-    // Bind all changes to this to the board changing
+    /** Break spot on the board */
+    ([x, y]) => this.board[y][x] = Spot.DESTROYED,
+    /** Bind all changes to this to the board changing */
     this.boardChanged.activate,
-    // Next turn
+    /** Next turn */
     () => this.turn.activate(this.waiting)
   )
 
@@ -53,7 +79,7 @@ export default class {
   }>()
 
   constructor(readonly board = Board) { 
-    this.resetValidMoves()
+    this.boardChanged.activate()
   }
 
   /** Starts the game with `color`'s turn first. */
@@ -74,33 +100,6 @@ export default class {
 
   /** Destroys a position on the board and flips the players turn. */
   destroy([x, y]: Position) {
-    this.board[y][x] = Spot.DESTROYED
     this.destroyed.activate([x, y])
-  }
-
-  private resetValidMoves() {
-    this.pieces.clear()
-
-    for (const [y, row] of this.board.entries())
-      for (const [x, spot] of row.entries())
-        if (isColor(spot))
-          this.pieces.set([x, y].toString(), {
-            color: spot,
-            position: [x, y],
-            moves: validMoves(this.board, [x, y]),
-          })
-  }
-
-  /** Activates the winner emitter if no plays are possible. */
-  private checkPlayable() {
-    const currentPiecesMoveCount = [...this.pieces]
-      .filter(([_, { color }]) => this.current == color)
-      .map(([_, { moves }]) => moves.size)
-
-    // End game and activate with the other player if no valid moves are left
-    if (0 == Math.max(...currentPiecesMoveCount))
-      this.winner.activate(this.waiting)
-
-    return this.winner.triggered
   }
 }
