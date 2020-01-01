@@ -13,11 +13,10 @@ export const enum Spot {
 
 export type Color = Spot.BLACK | Spot.WHITE
 export type Board = Spot[][]
-export type index = number
-export type Position = [index, index]
+export type Position = [number, number]
 
 /** The default state for the default board. */
-export default [
+export default JSON.parse(JSON.stringify([
   [Spot.EMPTY, Spot.EMPTY, Spot.BLACK, Spot.EMPTY, Spot.EMPTY, Spot.BLACK, Spot.EMPTY, Spot.EMPTY ],
   [Spot.EMPTY, Spot.EMPTY, Spot.EMPTY, Spot.EMPTY, Spot.EMPTY, Spot.EMPTY, Spot.EMPTY, Spot.EMPTY ],
   [Spot.BLACK, Spot.EMPTY, Spot.EMPTY, Spot.EMPTY, Spot.EMPTY, Spot.EMPTY, Spot.EMPTY, Spot.BLACK ],
@@ -26,7 +25,7 @@ export default [
   [Spot.WHITE, Spot.EMPTY, Spot.EMPTY, Spot.EMPTY, Spot.EMPTY, Spot.EMPTY, Spot.EMPTY, Spot.WHITE ],
   [Spot.EMPTY, Spot.EMPTY, Spot.EMPTY, Spot.EMPTY, Spot.EMPTY, Spot.EMPTY, Spot.EMPTY, Spot.EMPTY ],
   [Spot.EMPTY, Spot.EMPTY, Spot.WHITE, Spot.EMPTY, Spot.EMPTY, Spot.WHITE, Spot.EMPTY, Spot.EMPTY ],
-]
+])) as Board
 
 export const isColor = (spot: Spot): spot is Color =>
   spot == Spot.WHITE || spot == Spot.BLACK

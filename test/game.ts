@@ -1,12 +1,11 @@
 import 'should'
 import Game from '../src/Game'
-import simpleBoard from './simpleBoard'
-import { Spot } from '../src/Board'
+import Board, { Spot } from '../src/Board'
 
 let game: Game
 
 describe('Game', () => {
-  beforeEach(() => game = new Game(simpleBoard))
+  beforeEach(() => game = new Game(Board))
 
   it('positions match keys', () => {
     for (const [key, { position }] of game.pieces)
