@@ -12,7 +12,7 @@
 import Game from '@mothepro/amazons-engine'
 
 const g = new Game
-g.turnStart(Color.Black)
+g.start()
 ```
 
 TODO...

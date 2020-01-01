@@ -2,12 +2,6 @@ import { SafeEmitter, SafeSingleEmitter } from 'fancy-emitter'
 import Board, { Spot, Position, Color, isColor } from './Board.js'
 import validMoves from './validMoves.js'
 
-export interface Piece {
-  color: Color,
-  position: Position,
-  moves: Set<Position>,
-}
-
 export default class {
 
   /** @readonly current player's color. */
@@ -42,10 +36,22 @@ export default class {
     this.boardChanged.activate,
   )
 
-  /** All piece's color & valid moves, keyed by the piece's position stringified. */
-  readonly pieces = new Map<string, Piece>()
+  /** 
+   * All piece's color, position & their valid moves.
+   * keyed by the piece's position stringified. (Using an array as a key isn't possible due to references vs value)
+   */
+  readonly pieces = new Map<string, {
+    color: Color,
+    position: Position,
+    moves: Set<Position>,
+  }>()
 
   constructor(readonly board = Board) { }
+
+  /** Starts the game with `color`'s turn first. */
+  start(color: Color = Spot.BLACK) {
+    this.turnStarted.activate(color)
+  }
 
   /**
    * Moves a piece to a new position on the board without checking.
