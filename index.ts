@@ -1,2 +1,2 @@
-export { Position, Spot, Board } from './src/Board.js'
-export { default } from './src/Game.js'
+export { Position, Spot, Board, Color } from './src/Board.js'
+export { default, Action } from './src/Game.js'
