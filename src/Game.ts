@@ -84,11 +84,14 @@ export default class {
   /**
    * Moves a piece to a new position on the board without checking.
    * Clears the spot on the board where the piece was and updates the piece and the board.
+   * Starts the next turn automatically if destroying isn't possible.
    */
   move([fromX, fromY]: Position, [toX, toY]: Position) {
     this.board[toY][toX] = this.board[fromY][fromX]
     this.board[fromY][fromX] = Spot.EMPTY
     this.moved.activate([toX, toY])
+    this.boardChanged.once(() => this.pieces.get([toX, toY].toString())!.moves.size == 0
+      && this.turn.activate(this.waiting))
   }
 
   /** Destroys a position on the board and flips the players turn. */
