@@ -2,7 +2,20 @@ import { SafeEmitter, SafeSingleEmitter } from 'fancy-emitter'
 import Board, { Spot, Position, Color, isColor } from './Board.js'
 import validMoves from './validMoves.js'
 
+export const enum Action {
+  /** Game needs to be started. */
+  START,
+  /** Game is done, nothing left to do. */
+  NONE,
+  /** Current player needs to move a piece. */
+  MOVE,
+  /** Current player needs to destroy a spot. */
+  DESTROY,
+}
+
 export default class {
+  /** @readonly The next action that needs to be preformed. */
+  actionNeeded = Action.START
 
   /** @readonly current player's color. */
   current!: Color
@@ -14,8 +27,11 @@ export default class {
       : Spot.BLACK
   }
 
+  /** The state of the game has changed. */
+  readonly stateChange = new SafeEmitter<Action>(newState => this.actionNeeded = newState)
+
   /** Game is over and winner has been set. */
-  readonly winner = new SafeSingleEmitter<Color>()
+  readonly winner = new SafeSingleEmitter<Color>(() => this.stateChange.activate(Action.NONE))
 
   /**
    * The board has been changed.
@@ -40,7 +56,9 @@ export default class {
   readonly turn = new SafeEmitter<Color>(
     /** Bind color value to this emitter */
     color => this.current = color,
-    /** End the game if there aren't any moves left for this player. */
+    /** Move is needed when turn starts */
+    () => this.stateChange.activate(Action.MOVE),
+    /** End the game if there aren't any moves left for the current player. */
     () => 0 == [...this.pieces.values()]
       .filter(({ color }) => this.current == color)
       .map(({ moves }) => moves.size)
@@ -55,17 +73,19 @@ export default class {
     /** Possible positions that can be destroyed. */
     destructible: Set<Position>
   }>(
+    /** Destroy is needed after moving piece. */
+    () => this.stateChange.activate(Action.DESTROY),
     /** Starts the next turn automatically if destroying isn't possible. */
     ({destructible}) => destructible.size == 0 && this.turn.activate(this.waiting)
   )
 
   /** Activated when a spot on the board is destroyed. */
   readonly destroyed = new SafeEmitter<Position>(
-    /** Break spot on the board */
+    /** Destroy spot on the board. */
     ([x, y]) => this.board[y][x] = Spot.DESTROYED,
-    /** Bind all changes to this to the board changing */
+    /** Bind all changes to this to the board changing. */
     this.boardChanged.activate,
-    /** Next turn */
+    /** Start the next turn. */
     () => this.turn.activate(this.waiting)
   )
 
@@ -86,6 +106,11 @@ export default class {
     this.turn.activate(color)
   }
 
+  /** Destroys a position on the board and flips the players turn. */
+  destroy(position: Position) {
+    this.destroyed.activate(position)
+  }
+
   /**
    * Moves a piece to a new position on the board without checking.
    * Clears the spot on the board where the piece was and updates the piece and the board.
@@ -97,14 +122,9 @@ export default class {
 
     // Wait for the board to change so we can reuse valid moves generated from boardChanged action
     await this.boardChanged.next
-    this.moved.activate({ 
+    this.moved.activate({
       position: [toX, toY],
       destructible: this.pieces.get([toX, toY].toString())!.moves
     })
-  }
-
-  /** Destroys a position on the board and flips the players turn. */
-  destroy(position: Position) {
-    this.destroyed.activate(position)
   }
 }
