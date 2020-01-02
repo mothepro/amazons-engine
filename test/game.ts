@@ -20,9 +20,10 @@ describe('Game', () => {
       [firstMove] = firstPiece.moves.values()
 
     game.move(firstPiece.position, firstMove)
-    await game.boardChanged.next
+    const { position, destructible } = await game.moved.next
 
     game.pieces.has(firstMove.toString()).should.be.true()
-
+    position.should.eql(firstMove)
+    destructible.should.have.size(22)
   })
 })

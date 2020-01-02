@@ -49,9 +49,14 @@ export default class {
   )
 
   /** Activated when a piece has moved. */
-  readonly moved = new SafeEmitter<Position>(
-    /** Bind all changes to this to the board changing */
-    this.boardChanged.activate,
+  readonly moved = new SafeEmitter<{
+    /** New position of the piece. */
+    position: Position
+    /** Possible positions that can be destroyed. */
+    destructible: Set<Position>
+  }>(
+    /** Starts the next turn automatically if destroying isn't possible. */
+    ({destructible}) => destructible.size == 0 && this.turn.activate(this.waiting)
   )
 
   /** Activated when a spot on the board is destroyed. */
@@ -69,9 +74,9 @@ export default class {
    * keyed by the piece's position stringified. (Using an array as a key isn't possible due to references vs value)
    */
   readonly pieces = new Map<string, {
-    color: Color,
-    position: Position,
-    moves: Set<Position>,
+    color: Color
+    position: Position
+    moves: Set<Position>
   }>()
 
   constructor(readonly board = Board) { }
@@ -84,18 +89,22 @@ export default class {
   /**
    * Moves a piece to a new position on the board without checking.
    * Clears the spot on the board where the piece was and updates the piece and the board.
-   * Starts the next turn automatically if destroying isn't possible.
    */
-  move([fromX, fromY]: Position, [toX, toY]: Position) {
+  async move([fromX, fromY]: Position, [toX, toY]: Position) {
     this.board[toY][toX] = this.board[fromY][fromX]
     this.board[fromY][fromX] = Spot.EMPTY
-    this.moved.activate([toX, toY])
-    this.boardChanged.once(() => this.pieces.get([toX, toY].toString())!.moves.size == 0
-      && this.turn.activate(this.waiting))
+    this.boardChanged.activate()
+
+    // Wait for the board to change so we can reuse valid moves generated from boardChanged action
+    await this.boardChanged.next
+    this.moved.activate({ 
+      position: [toX, toY],
+      destructible: this.pieces.get([toX, toY].toString())!.moves
+    })
   }
 
   /** Destroys a position on the board and flips the players turn. */
-  destroy([x, y]: Position) {
-    this.destroyed.activate([x, y])
+  destroy(position: Position) {
+    this.destroyed.activate(position)
   }
 }
