@@ -1,6 +1,7 @@
 import { SafeEmitter, SafeSingleEmitter } from 'fancy-emitter'
 import Board, { Spot, Position, Color, isColor } from './Board.js'
 import validMoves from './validMoves.js'
+import StringifiedSet from './StringifiedSet.js'
 
 export const enum Action {
   /** Game needs to be started. */
@@ -91,11 +92,11 @@ export default class {
   readonly pieces = new Map<string, {
     color: Color
     position: Position
-    moves: Set<Position>
+    moves: StringifiedSet<Position>
   }>()
 
-  /** @readonly list of points that can be destroyed if that is the required action. */
-  destructible = new Set<Position>()
+  /** @readonly list of hashed positions that can be destroyed if that is the required action. */
+  destructible = new StringifiedSet<Position>()
 
   constructor(readonly board = Board) { }
 

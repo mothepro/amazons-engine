@@ -25,5 +25,6 @@ describe('Game', () => {
     game.pieces.has(firstMove.toString()).should.be.true()
     position.should.eql(firstMove)
     game.destructible.should.have.size(22)
+    game.destructible.has([2, 0]).should.be.true()
   })
 })

@@ -1,8 +1,9 @@
 import { Board, Position, Spot } from './Board.js'
+import StringifiedSet from './StringifiedSet.js'
 
 /** Gets all valid positions to move to from a given starting position. */
 export default function (board: Board, [startX, startY]: Position) {
-  const ret = new Set<Position>()
+  const ret = new StringifiedSet<Position>()
 
   // up
   for (let y = startY - 1;
