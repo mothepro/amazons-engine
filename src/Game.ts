@@ -67,16 +67,11 @@ export default class {
   )
 
   /** Activated when a piece has moved. */
-  readonly moved = new SafeEmitter<{
-    /** New position of the piece. */
-    position: Position
-    /** Possible positions that can be destroyed. */
-    destructible: Set<Position>
-  }>(
+  readonly moved = new SafeEmitter<Position>(
     /** Destroy is needed after moving piece. */
     () => this.stateChange.activate(Action.DESTROY),
     /** Starts the next turn automatically if destroying isn't possible. */
-    ({destructible}) => destructible.size == 0 && this.turn.activate(this.waiting)
+    () => this.destructible.size == 0 && this.turn.activate(this.waiting)
   )
 
   /** Activated when a spot on the board is destroyed. */
@@ -98,6 +93,9 @@ export default class {
     position: Position
     moves: Set<Position>
   }>()
+
+  /** @readonly list of points that can be destroyed if that is the required action. */
+  destructible = new Set<Position>()
 
   constructor(readonly board = Board) { }
 
@@ -122,9 +120,7 @@ export default class {
 
     // Wait for the board to change so we can reuse valid moves generated from boardChanged action
     await this.boardChanged.next
-    this.moved.activate({
-      position: [toX, toY],
-      destructible: this.pieces.get([toX, toY].toString())!.moves
-    })
+    this.destructible = this.pieces.get([toX, toY].toString())!.moves
+    this.moved.activate([toX, toY])
   }
 }
