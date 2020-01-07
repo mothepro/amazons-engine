@@ -8,31 +8,23 @@ describe('Game', () => {
   beforeEach(() => game = new Game(Board))
 
   it('move piece', async () => {
-    game.start()
-    await game.stateChange.next
+    await game.start()
 
     const [[firstPiece, { moves: [firstMove] }]] = game.pieces
-
-    game.move(firstPiece, firstMove)
-    const position = await game.moved.next
+    await game.move(firstPiece, firstMove)
 
     game.pieces.has(firstMove).should.be.true()
-    position.should.eql(firstMove)
     game.destructible.should.have.size(22)
     game.destructible.has([2, 0]).should.be.true()
   })
 
   it('destroy spot', async () => {
-    game.start()
-    await game.stateChange.next
-
+    await game.start()
     const [[firstPiece, { moves: [firstMove] }]] = game.pieces
-    game.move(firstPiece, firstMove)
-    await game.moved.next
+    await game.move(firstPiece, firstMove)
 
     const [firstDestroy] = game.destructible
-    game.destroy(firstDestroy)
-    await game.destroyed.next
+    await game.destroy(firstDestroy)
 
     await game.stateChange.next
     game.state.should.eql(State.MOVE)
