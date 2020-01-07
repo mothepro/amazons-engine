@@ -18,6 +18,16 @@
     esutils "^2.0.2"
     js-tokens "^4.0.0"
 
+"@mothepro/loose-map@^1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@mothepro/loose-map/-/loose-map-1.0.0.tgz#671423009fb40557d1f201257aad14d45f26bb91"
+  integrity sha512-bxGduB9xGMKwU/1FKCyMdc8WqiIAdSTfWYxm9YuEH9C79XA6R0TF7PUTjhhPPuCJBHvRIAZVMtcftvxM4AwyTg==
+
+"@mothepro/loose-set@^1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@mothepro/loose-set/-/loose-set-1.0.0.tgz#ca9ab5d352b0674ec7d9c399b4dc3adb9dc80d33"
+  integrity sha512-VAbVpnlxirGhT0hRadEtC+nWPONDQcsOx92ZncGwQOPkL0UtuMGKmDoKsc7dtKqmxpAzBEhcyTq5Kb5ayVVqhA==
+
 "@samverschueren/stream-to-observable@^0.3.0":
   version "0.3.0"
   resolved "https://registry.yarnpkg.com/@samverschueren/stream-to-observable/-/stream-to-observable-0.3.0.tgz#ecdf48d532c58ea477acfcab80348424f8d0662f"

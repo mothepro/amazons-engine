@@ -1,9 +1,9 @@
 import { Board, Position, Spot } from './Board.js'
-import StringifiedSet from './StringifiedSet.js'
+import LooseSet from '@mothepro/loose-set'
 
 /** Gets all valid positions to move to from a given starting position. */
 export default function (board: Board, [startX, startY]: Position) {
-  const ret = new StringifiedSet<Position>()
+  const ret = new LooseSet<Position>()
 
   // up
   for (let y = startY - 1;

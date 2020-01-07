@@ -7,22 +7,16 @@ let game: Game
 describe('Game', () => {
   beforeEach(() => game = new Game(Board))
 
-  it('positions match keys', () => {
-    for (const [key, { position }] of game.pieces)
-      position.toString().should.eql(key)
-  })
-
   it('move piece', async () => {
     game.start()
     await game.turn.next
 
-    const [firstPiece] = game.pieces.values(),
-      [firstMove] = firstPiece.moves.values()
+    const [[firstPiece, { moves: [firstMove] }]] = game.pieces
 
-    game.move(firstPiece.position, firstMove)
+    game.move(firstPiece, firstMove)
     const position = await game.moved.next
 
-    game.pieces.has(firstMove.toString()).should.be.true()
+    game.pieces.has(firstMove).should.be.true()
     position.should.eql(firstMove)
     game.destructible.should.have.size(22)
     game.destructible.has([2, 0]).should.be.true()

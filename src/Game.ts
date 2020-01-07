@@ -1,7 +1,8 @@
 import { SafeEmitter, SafeSingleEmitter } from 'fancy-emitter'
 import Board, { Spot, Position, Color, isColor } from './Board.js'
 import validMoves from './validMoves.js'
-import StringifiedSet from './StringifiedSet.js'
+import LooseMap from '@mothepro/loose-map'
+import LooseSet from '@mothepro/loose-set'
 
 export const enum Action {
   /** Game needs to be started. */
@@ -39,9 +40,8 @@ export default class {
     for (const [y, row] of this.board.entries())
       for (const [x, spot] of row.entries())
         if (isColor(spot))
-          this.pieces.set([x, y].toString(), {
+          this.pieces.set([x, y], {
             color: spot,
-            position: [x, y],
             moves: validMoves(this.board, [x, y]),
           })
   }
@@ -78,7 +78,7 @@ export default class {
     this.calcPieces,
 
     /** Set the new destructible spots. */
-    position => this.destructible = this.pieces.get(position.toString())!.moves,
+    position => this.destructible = this.pieces.get(position)!.moves,
 
     /** Starts the next turn automatically if destroying isn't possible. */
     () => this.destructible.size == 0 && this.turn.activate(this.waiting)
@@ -101,14 +101,13 @@ export default class {
    * All piece's color, position & their valid moves.
    * keyed by the piece's position stringified. (Using an array as a key isn't possible due to references vs value)
    */
-  readonly pieces = new Map<string, {
+  readonly pieces = new LooseMap<Position, {
     color: Color
-    position: Position
-    moves: StringifiedSet<Position>
+    moves: LooseSet<Position>
   }>()
 
   /** @readonly list of hashed positions that can be destroyed if that is the required action. */
-  destructible = new StringifiedSet<Position>()
+  destructible = new LooseSet<Position>()
 
   /** Starts the game with `color`'s turn first. */
   start(color: Color = Spot.BLACK) {
