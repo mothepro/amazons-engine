@@ -1,6 +1,6 @@
 import 'should'
-import Game from '../src/Game'
-import Board from '../src/Board'
+import Game, { Action } from '../src/Game'
+import Board, { Spot } from '../src/Board'
 
 let game: Game
 
@@ -9,7 +9,7 @@ describe('Game', () => {
 
   it('move piece', async () => {
     game.start()
-    await game.turn.next
+    await game.stateChange.next
 
     const [[firstPiece, { moves: [firstMove] }]] = game.pieces
 
@@ -20,5 +20,22 @@ describe('Game', () => {
     position.should.eql(firstMove)
     game.destructible.should.have.size(22)
     game.destructible.has([2, 0]).should.be.true()
+  })
+
+  it('destroy spot', async () => {
+    game.start()
+    await game.stateChange.next
+
+    const [[firstPiece, { moves: [firstMove] }]] = game.pieces
+    game.move(firstPiece, firstMove)
+    await game.moved.next
+
+    const [firstDestroy] = game.destructible
+    game.destroy(firstDestroy)
+    await game.destroyed.next
+
+    await game.stateChange.next
+    game.actionNeeded.should.eql(Action.MOVE)
+    game.current.should.eql(Spot.WHITE)
   })
 })

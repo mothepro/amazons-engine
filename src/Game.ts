@@ -20,7 +20,7 @@ export default class {
   actionNeeded = Action.START
 
   /** @readonly current player's color. */
-  current!: Color
+  current: Color = Spot.WHITE
 
   /** @readonly the other player's color. */
   get waiting(): Color {
@@ -47,54 +47,61 @@ export default class {
   }
 
   /** The state of the game has changed. */
-  readonly stateChange = new SafeEmitter<Action>(newState => this.actionNeeded = newState)
+  readonly stateChange = new SafeEmitter<Action>(
+    /**
+     * Bind state to this emitter
+     * 
+     * If a move is needed
+     * + Swap the current player
+     * + End the game if there aren't any moves left for the current player
+     * 
+     * If a destroy is needed
+     * + Starts the next turn automatically if destroying isn't possible
+     */
+    newState => {
+      switch (this.actionNeeded = newState) {
+        case Action.MOVE:
+          this.current = this.waiting
+
+          if ([...this.pieces.values()]
+            .filter(({ color }) => this.current == color)
+            .every(({ moves }) => moves.size == 0))
+            this.winner.activate(this.waiting)
+          break
+
+        case Action.DESTROY:
+          if (this.destructible.size == 0)
+            this.stateChange.activate(Action.MOVE)
+          break
+      }
+    }
+  )
 
   /** Game is over and winner has been set. */
   readonly winner = new SafeSingleEmitter<Color>(() => this.stateChange.activate(Action.NONE))
 
-  /** Activated when the players turn changes */
-  readonly turn = new SafeEmitter<Color>(
-
-    /** Bind color value to this emitter */
-    color => this.current = color,
-
-    /** Move is needed when turn starts */
-    () => this.stateChange.activate(Action.MOVE),
-
-    /** End the game if there aren't any moves left for the current player. */
-    () => [...this.pieces.values()]
-      .filter(({ color }) => this.current == color)
-      .every(({ moves }) => moves.size == 0)
-      && this.winner.activate(this.waiting)
-  )
-
-  /** Activated when a piece has moved. */
+  /** Activated when a piece has been moved. */
   readonly moved = new SafeEmitter<Position>(
-
-    /** Destroy is needed after moving piece. */
-    () => this.stateChange.activate(Action.DESTROY),
-
     /** Update pieces since board has changed. */
     this.calcPieces,
 
     /** Set the new destructible spots. */
     position => this.destructible = this.pieces.get(position)!.moves,
 
-    /** Starts the next turn automatically if destroying isn't possible. */
-    () => this.destructible.size == 0 && this.turn.activate(this.waiting)
+    /** Destroy is needed after moving piece. */
+    () => this.stateChange.activate(Action.DESTROY),
   )
 
-  /** Activated when a spot on the board is destroyed. */
+  /** Activated when a spot on the board has been destroyed. */
   readonly destroyed = new SafeEmitter<Position>(
-
-    /** Destroy spot on the board. */
-    ([x, y]) => this.board[y][x] = Spot.DESTROYED,
+    /** The possible destructible spots are no longer relevant. */
+    () => this.destructible.clear(),
 
     /** Update pieces since board has changed. */
     this.calcPieces,
 
     /** Start the next turn. */
-    () => this.turn.activate(this.waiting)
+    () => this.stateChange.activate(Action.MOVE)
   )
 
   /** 
@@ -109,14 +116,15 @@ export default class {
   /** @readonly list of hashed positions that can be destroyed if that is the required action. */
   destructible = new LooseSet<Position>()
 
-  /** Starts the game with `color`'s turn first. */
-  start(color: Color = Spot.BLACK) {
-    this.turn.activate(color)
+  /** Starts the game with Black's turn first. */
+  start() {
+    this.stateChange.activate(Action.MOVE)
   }
 
   /** Destroys a position on the board and flips the players turn. */
-  destroy(position: Position) {
-    this.destroyed.activate(position)
+  destroy([x, y]: Position) {
+    this.board[y][x] = Spot.DESTROYED
+    this.destroyed.activate([x, y])
   }
 
   /**
