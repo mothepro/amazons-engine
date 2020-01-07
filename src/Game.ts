@@ -4,20 +4,20 @@ import validMoves from './validMoves.js'
 import LooseMap from '@mothepro/loose-map'
 import LooseSet from '@mothepro/loose-set'
 
-export const enum Action {
-  /** Game needs to be started. */
+export const enum State {
+  /** Game is waiting to be started. */
   START,
   /** Game is done, nothing left to do. */
   NONE,
-  /** Current player needs to move a piece. */
+  /** Turn just started and the current player needs to move a piece. */
   MOVE,
-  /** Current player needs to destroy a spot. */
+  /** Current player needs to destroy a spot to end their turn. */
   DESTROY,
 }
 
 export default class {
   /** @readonly The next action that needs to be preformed. */
-  actionNeeded = Action.START
+  state = State.START
 
   /** @readonly current player's color. */
   current: Color = Spot.WHITE
@@ -47,7 +47,7 @@ export default class {
   }
 
   /** The state of the game has changed. */
-  readonly stateChange = new SafeEmitter<Action>(
+  readonly stateChange = new SafeEmitter<State>(
     /**
      * Bind state to this emitter
      * 
@@ -59,8 +59,8 @@ export default class {
      * + Starts the next turn automatically if destroying isn't possible
      */
     newState => {
-      switch (this.actionNeeded = newState) {
-        case Action.MOVE:
+      switch (this.state = newState) {
+        case State.MOVE:
           this.current = this.waiting
 
           if ([...this.pieces.values()]
@@ -69,16 +69,16 @@ export default class {
             this.winner.activate(this.waiting)
           break
 
-        case Action.DESTROY:
+        case State.DESTROY:
           if (this.destructible.size == 0)
-            this.stateChange.activate(Action.MOVE)
+            this.stateChange.activate(State.MOVE)
           break
       }
     }
   )
 
   /** Game is over and winner has been set. */
-  readonly winner = new SafeSingleEmitter<Color>(() => this.stateChange.activate(Action.NONE))
+  readonly winner = new SafeSingleEmitter<Color>(() => this.stateChange.activate(State.NONE))
 
   /** Activated when a piece has been moved. */
   readonly moved = new SafeEmitter<Position>(
@@ -89,7 +89,7 @@ export default class {
     position => this.destructible = this.pieces.get(position)!.moves,
 
     /** Destroy is needed after moving piece. */
-    () => this.stateChange.activate(Action.DESTROY),
+    () => this.stateChange.activate(State.DESTROY),
   )
 
   /** Activated when a spot on the board has been destroyed. */
@@ -101,7 +101,7 @@ export default class {
     this.calcPieces,
 
     /** Start the next turn. */
-    () => this.stateChange.activate(Action.MOVE)
+    () => this.stateChange.activate(State.MOVE)
   )
 
   /** 
@@ -117,24 +117,24 @@ export default class {
   destructible = new LooseSet<Position>()
 
   /** Starts the game with Black's turn first. */
-  start() {
-    this.stateChange.activate(Action.MOVE)
+  async start() {
+    await this.stateChange.activate(State.MOVE).next
   }
 
   /** Destroys a position on the board and flips the players turn. */
-  destroy([x, y]: Position) {
+  async destroy([x, y]: Position) {
     this.board[y][x] = Spot.DESTROYED
-    this.destroyed.activate([x, y])
+    await this.destroyed.activate([x, y]).next
   }
 
   /**
    * Moves a piece to a new position on the board without checking.
    * Clears the spot on the board where the piece was and updates the piece and the board.
    */
-  move([fromX, fromY]: Position, [toX, toY]: Position) {
+  async move([fromX, fromY]: Position, [toX, toY]: Position) {
     this.board[toY][toX] = this.board[fromY][fromX]
     this.board[fromY][fromX] = Spot.EMPTY
-    this.moved.activate([toX, toY])
+    await this.moved.activate([toX, toY]).next
   }
 
   constructor(readonly board = Board) { this.calcPieces() }

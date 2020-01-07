@@ -1,5 +1,5 @@
 import 'should'
-import Game, { Action } from '../src/Game'
+import Game, { State } from '../src/Game'
 import Board, { Spot } from '../src/Board'
 
 let game: Game
@@ -35,7 +35,7 @@ describe('Game', () => {
     await game.destroyed.next
 
     await game.stateChange.next
-    game.actionNeeded.should.eql(Action.MOVE)
+    game.state.should.eql(State.MOVE)
     game.current.should.eql(Spot.WHITE)
   })
 })
