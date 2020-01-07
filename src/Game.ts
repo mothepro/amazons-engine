@@ -62,10 +62,9 @@ export default class {
     () => this.stateChange.activate(Action.MOVE),
 
     /** End the game if there aren't any moves left for the current player. */
-    () => 0 == [...this.pieces.values()]
+    () => [...this.pieces.values()]
       .filter(({ color }) => this.current == color)
-      .map(({ moves }) => moves.size)
-      .reduce((prev, curr) => prev + curr)
+      .every(({ moves }) => moves.size == 0)
       && this.winner.activate(this.waiting)
   )
 
