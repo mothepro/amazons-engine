@@ -28,21 +28,14 @@ export default class {
       : Spot.BLACK
   }
 
-  /** The state of the game has changed. */
-  readonly stateChange = new SafeEmitter<Action>(newState => this.actionNeeded = newState)
-
-  /** Game is over and winner has been set. */
-  readonly winner = new SafeSingleEmitter<Color>(() => this.stateChange.activate(Action.NONE))
-
   /**
    * The board has been changed.
    * The pieces valid moves need to re calculated.
    * 
    * Activate this immediately to calculate the valid moves on initialization.
    */
-  readonly boardChanged = new SafeEmitter(() => {
+  private readonly calcPieces = () => {
     this.pieces.clear()
-
     for (const [y, row] of this.board.entries())
       for (const [x, spot] of row.entries())
         if (isColor(spot))
@@ -51,14 +44,23 @@ export default class {
             position: [x, y],
             moves: validMoves(this.board, [x, y]),
           })
-  }).activate()
+  }
+
+  /** The state of the game has changed. */
+  readonly stateChange = new SafeEmitter<Action>(newState => this.actionNeeded = newState)
+
+  /** Game is over and winner has been set. */
+  readonly winner = new SafeSingleEmitter<Color>(() => this.stateChange.activate(Action.NONE))
 
   /** Activated when the players turn changes */
   readonly turn = new SafeEmitter<Color>(
+
     /** Bind color value to this emitter */
     color => this.current = color,
+
     /** Move is needed when turn starts */
     () => this.stateChange.activate(Action.MOVE),
+
     /** End the game if there aren't any moves left for the current player. */
     () => 0 == [...this.pieces.values()]
       .filter(({ color }) => this.current == color)
@@ -69,18 +71,29 @@ export default class {
 
   /** Activated when a piece has moved. */
   readonly moved = new SafeEmitter<Position>(
+
     /** Destroy is needed after moving piece. */
     () => this.stateChange.activate(Action.DESTROY),
+
+    /** Update pieces since board has changed. */
+    this.calcPieces,
+
+    /** Set the new destructible spots. */
+    position => this.destructible = this.pieces.get(position.toString())!.moves,
+
     /** Starts the next turn automatically if destroying isn't possible. */
     () => this.destructible.size == 0 && this.turn.activate(this.waiting)
   )
 
   /** Activated when a spot on the board is destroyed. */
   readonly destroyed = new SafeEmitter<Position>(
+
     /** Destroy spot on the board. */
     ([x, y]) => this.board[y][x] = Spot.DESTROYED,
-    /** Bind all changes to this to the board changing. */
-    this.boardChanged.activate,
+
+    /** Update pieces since board has changed. */
+    this.calcPieces,
+
     /** Start the next turn. */
     () => this.turn.activate(this.waiting)
   )
@@ -98,8 +111,6 @@ export default class {
   /** @readonly list of hashed positions that can be destroyed if that is the required action. */
   destructible = new StringifiedSet<Position>()
 
-  constructor(readonly board = Board) { }
-
   /** Starts the game with `color`'s turn first. */
   start(color: Color = Spot.BLACK) {
     this.turn.activate(color)
@@ -114,14 +125,11 @@ export default class {
    * Moves a piece to a new position on the board without checking.
    * Clears the spot on the board where the piece was and updates the piece and the board.
    */
-  async move([fromX, fromY]: Position, [toX, toY]: Position) {
+  move([fromX, fromY]: Position, [toX, toY]: Position) {
     this.board[toY][toX] = this.board[fromY][fromX]
     this.board[fromY][fromX] = Spot.EMPTY
-    this.boardChanged.activate()
-
-    // Wait for the board to change so we can reuse valid moves generated from boardChanged action
-    await this.boardChanged.next
-    this.destructible = this.pieces.get([toX, toY].toString())!.moves
     this.moved.activate([toX, toY])
   }
+
+  constructor(readonly board = Board) { this.calcPieces() }
 }
