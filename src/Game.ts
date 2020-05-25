@@ -1,4 +1,4 @@
-import { SafeEmitter, SafeSingleEmitter } from 'fancy-emitter'
+import { SafeEmitter, Emitter } from 'fancy-emitter'
 import Board, { Spot, Position, Color, isColor } from './Board.js'
 import validMoves from './validMoves.js'
 import LooseMap from '@mothepro/loose-map'
@@ -6,9 +6,7 @@ import LooseSet from '@mothepro/loose-set'
 
 export const enum State {
   /** Game is waiting to be started. */
-  START,
-  /** Game is done, nothing left to do. */
-  NONE,
+  WAITING,
   /** Turn just started and the current player needs to move a piece. */
   MOVE,
   /** Current player needs to destroy a spot to end their turn. */
@@ -17,7 +15,7 @@ export const enum State {
 
 export default class {
   /** @readonly The next action that needs to be preformed. */
-  state = State.START
+  state = State.WAITING
 
   /** @readonly current player's color. */
   current: Color = Spot.WHITE
@@ -46,10 +44,14 @@ export default class {
           })
   }
 
-  /** The state of the game has changed. */
-  readonly stateChange = new SafeEmitter<State>(
-    /**
-     * Bind state to this emitter
+  /**
+   * The state of the game has changed.
+   * 
+   * Cancels once the current player can not make any moves.
+   * `this.waiting` is the winner.
+   */
+  readonly stateChange = new Emitter<State>(
+    /* Bind state to this emitter
      * 
      * If a move is needed
      * + Swap the current player
@@ -66,7 +68,7 @@ export default class {
           if ([...this.pieces.values()]
             .filter(({ color }) => this.current == color)
             .every(({ moves }) => moves.size == 0))
-            this.winner.activate(this.waiting)
+            this.stateChange.cancel()
           break
 
         case State.DESTROY:
@@ -74,11 +76,7 @@ export default class {
             this.stateChange.activate(State.MOVE)
           break
       }
-    }
-  )
-
-  /** Game is over and winner has been set. */
-  readonly winner = new SafeSingleEmitter<Color>(() => this.stateChange.activate(State.NONE))
+    })
 
   /** Activated when a piece has been moved. */
   readonly moved = new SafeEmitter<Position>(
@@ -89,8 +87,7 @@ export default class {
     position => this.destructible = this.pieces.get(position)!.moves,
 
     /** Destroy is needed after moving piece. */
-    () => this.stateChange.activate(State.DESTROY),
-  )
+    () => this.stateChange.activate(State.DESTROY))
 
   /** Activated when a spot on the board has been destroyed. */
   readonly destroyed = new SafeEmitter<Position>(
@@ -101,8 +98,7 @@ export default class {
     this.calcPieces,
 
     /** Start the next turn. */
-    () => this.stateChange.activate(State.MOVE)
-  )
+    () => this.stateChange.activate(State.MOVE))
 
   /** 
    * All piece's color, position & their valid moves.
